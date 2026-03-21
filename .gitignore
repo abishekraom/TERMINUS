@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Environment (contains API keys)
+.env
+
+# Service account & secrets
+secrets/
+
+# Local write/fallback queue data
+data/
+
+# Logs
+*.log
+logs/
+health.json
+snapshot.json
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
