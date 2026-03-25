@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment (contains API keys)
+.env
+
+# Firebase service account & secrets
+secrets/
+
+# Local write queue data
+data/
+
+# OMA Ralph state (internal tooling)
+.oma/state/
+
+# Logs
+*.log
+logs/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

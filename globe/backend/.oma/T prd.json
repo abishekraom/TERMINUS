@@ -1,0 +1,188 @@
+{
+  "project": "VDIE — Vessel Data Ingestion Engine",
+  "branchName": "ralph/vdie-api-engine",
+  "description": "Stateful Node.js microservice consuming AISStream (WebSocket) and OpenSky Network (REST poll), normalizing payloads to unified VesselState schema, broadcasting to Firebase Realtime DB / Firestore, internal WS server, and REST snapshot endpoint.",
+  "maxIterations": 15,
+  "operationLevel": "high",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Project Foundation & Logger",
+      "description": "As the engine, I need a Node.js project with Fastify, pino logger, folder structure, and .env.example so that all modules have a consistent shell to run in.",
+      "acceptanceCriteria": [
+        "package.json present with all dependencies from PRD §2",
+        "src/ folder structure matches PRD §13 exactly",
+        ".env.example has all 11 env vars from PRD §12",
+        "logger.js exports pino with pino-pretty in dev, JSON in prod",
+        "node --check src/logger.js passes"
+      ],
+      "priority": 1,
+      "passes": false
+    },
+    {
+      "id": "US-002",
+      "title": "Core Calculators",
+      "description": "As the engine, I need ETA (Haversine+SOG), dead-reckoning (project 5/10/15 min ahead), and anomaly detection (sharp turn, sudden stop, emergency squawk) calculators.",
+      "acceptanceCriteria": [
+        "eta.js: haversine distance, ETA ISO-8601, etaConfidence enum",
+        "deadReckoning.js: returns [{lat, lon, minutesAhead}] for 5, 10, 15 min",
+        "anomaly.js: detects SHARP_TURN (|RoT|>60), SUDDEN_STOP (SOG drop), EMERGENCY_SQUAWK (7500/7600/7700)",
+        "node --check passes all 3"
+      ],
+      "priority": 2,
+      "passes": false
+    },
+    {
+      "id": "US-003",
+      "title": "AIS Normalizer",
+      "description": "As the engine, I need to convert raw AISStream PositionReport, ShipStaticData, and StandardClassBPositionReport into VesselState objects with all fields from PRD §3 and §5.",
+      "acceptanceCriteria": [
+        "Handles all 3 message types",
+        "vesselId follows 'MMSI:<mmsi>' pattern",
+        "Drops invalid lat/lon sentinels (91.0/181.0)",
+        "Staleness check: drops if >120s old",
+        "Vessel type filter: skips Military(35) and Fishing(30)",
+        "node --check passes"
+      ],
+      "priority": 3,
+      "passes": false
+    },
+    {
+      "id": "US-004",
+      "title": "ADS-B Normalizer",
+      "description": "As the engine, I need to convert raw OpenSky state vectors into VesselState objects.",
+      "acceptanceCriteria": [
+        "vesselId follows 'ICAO:<icao24>' pattern",
+        "velocity converted m/s → knots",
+        "squawk emergency detection (7500/7600/7700)",
+        "Filters: on_ground==false, category IN [4,5,6], last_contact within 120s",
+        "node --check passes"
+      ],
+      "priority": 4,
+      "passes": false
+    },
+    {
+      "id": "US-005",
+      "title": "AISStream WebSocket Connector",
+      "description": "As the engine, I need a persistent WebSocket connection to AISStream.io with exponential backoff reconnection and message dispatch.",
+      "acceptanceCriteria": [
+        "Connects to wss://stream.aisstream.io/v0/stream",
+        "Sends subscription with AISSTREAM_API_KEY and all 4 FilterMessageTypes",
+        "Exponential backoff: 1s→2s→4s→8s→max 60s",
+        "Logs AISSTREAM_RECONNECT on disconnect",
+        "Dispatches messages to aisNormalizer",
+        "node --check passes"
+      ],
+      "priority": 5,
+      "passes": false
+    },
+    {
+      "id": "US-006",
+      "title": "OpenSky OAuth2 Polling Connector",
+      "description": "As the engine, I need OAuth2 token management and a 30-second polling loop against OpenSky /states/all.",
+      "acceptanceCriteria": [
+        "Fetches token from OPENSKY_TOKEN_ENDPOINT",
+        "Rotates token on 401",
+        "Backs off 60s on 429",
+        "Polls every OPENSKY_POLL_INTERVAL_MS",
+        "Filters on_ground==false, category [4,5,6]",
+        "Dispatches to adsbNormalizer",
+        "node --check passes"
+      ],
+      "priority": 6,
+      "passes": false
+    },
+    {
+      "id": "US-007",
+      "title": "Firebase Writer",
+      "description": "As the engine, I need to write VesselState to Firebase Realtime DB (state+trail) and Firestore (profile+alerts) with retry logic.",
+      "acceptanceCriteria": [
+        "Writes /vessels/{vesselId}/state to Realtime DB",
+        "Writes /vessels/{vesselId}/trail ring-buffer (200 pts AIS, 50 ADS-B)",
+        "Writes Firestore /vesselProfiles/{vesselId}",
+        "3x retry with 500ms delay, then localQueue fallback",
+        "Logs FIREBASE_WRITE (sampled 1-in-10 in prod)",
+        "node --check passes"
+      ],
+      "priority": 7,
+      "passes": false
+    },
+    {
+      "id": "US-008",
+      "title": "Local Queue Fallback",
+      "description": "As the engine, I need a local file-based queue for failed Firebase writes.",
+      "acceptanceCriteria": [
+        "Writes failed VesselState to local JSONL file",
+        "Queue drains periodically when Firebase is available",
+        "node --check passes"
+      ],
+      "priority": 8,
+      "passes": false
+    },
+    {
+      "id": "US-009",
+      "title": "LOD Priority Scorer",
+      "description": "As the engine, I need to score and rank vessels for LOD slider selection using the formula from PRD §6.",
+      "acceptanceCriteria": [
+        "Score = isUnderway×40 + hasActiveThreats×30 + isOperatorTracked×20 + dataQuality=HIGH×5 + random(0–5)",
+        "selectByLod(count, vesselMap) returns top-N vessels",
+        "node --check passes"
+      ],
+      "priority": 9,
+      "passes": false
+    },
+    {
+      "id": "US-010",
+      "title": "WebSocket Backup Transport (B)",
+      "description": "As a CesiumJS client, I need a WebSocket endpoint at ws://localhost:3001/vessels/stream to receive VesselState patches every 5s.",
+      "acceptanceCriteria": [
+        "Supports { subscribe: 'ALL' } and { subscribe: 'MMSI', ids: [] }",
+        "Pushes delta patches every 5s per subscribed vessel",
+        "Uses @fastify/websocket plugin",
+        "node --check passes"
+      ],
+      "priority": 10,
+      "passes": false
+    },
+    {
+      "id": "US-011",
+      "title": "REST Snapshot Transport (C)",
+      "description": "As a CesiumJS client, I need GET /vessels/snapshot to return current VesselState[] at requested LOD, cached for 10s.",
+      "acceptanceCriteria": [
+        "Accepts ?lod=N&type=CARGO,TANKER query params",
+        "Cached 10s",
+        "Returns filtered VesselState[]",
+        "node --check passes"
+      ],
+      "priority": 11,
+      "passes": false
+    },
+    {
+      "id": "US-012",
+      "title": "API Routes & Entry Point",
+      "description": "As the system operator, I need POST /lod, GET /vessels/snapshot, and GET /health endpoints with x-api-key auth.",
+      "acceptanceCriteria": [
+        "POST /lod { count } changes LOD and logs LOD_CHANGE",
+        "GET /health returns { status: 'ok', uptime, connectedSources }",
+        "x-api-key auth on all routes via INTERNAL_API_KEY",
+        "src/index.js bootstraps Fastify + all connectors",
+        "node --check src/index.js passes"
+      ],
+      "priority": 12,
+      "passes": false
+    },
+    {
+      "id": "US-013",
+      "title": "Docker & DevOps",
+      "description": "As the operator, I need a Dockerfile and docker-compose.yml for local deployment per Q2.",
+      "acceptanceCriteria": [
+        "Dockerfile uses node:20-alpine",
+        "docker-compose.yml has vdie service with env_file .env",
+        ".gitignore excludes secrets/ and .env",
+        "node --check passes for all source files"
+      ],
+      "priority": 13,
+      "passes": false
+    }
+  ]
+}

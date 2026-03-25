@@ -1,0 +1,8 @@
+# Ralph Progress Log
+Started: 2026-03-20T15:45:32+05:30
+
+## Codebase Patterns
+- Data flattening omits array contents.
+- Need to recursively expand arrays or handle specific keys (trail, projectedPositions) with mini-tables.
+
+---

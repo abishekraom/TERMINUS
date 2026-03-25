@@ -1,0 +1,40 @@
+# Ralph Progress Log
+Started: 2026-03-20T08:52:00Z
+Completed: 2026-03-20T09:02:00Z
+Project: VDIE — Vessel Data Ingestion Engine
+Max Iterations: 15 | Operation Level: HIGH | Iterations Used: ~3
+
+## Codebase Patterns
+- Node.js 20 LTS, Fastify 4.x, CommonJS modules, pino logging
+- VesselState is the single unified schema \u2014 never raw payloads downstream
+- vesselId format: "MMSI:<mmsi>" or "ICAO:<icao24>"
+- Env vars via dotenv in dev, process.env in prod
+- Firebase Admin SDK for all DB writes
+- All trail operations use in-memory ring buffer + Firebase append
+
+## Files Created (14 source files)
+- src/logger.js \u2014 pino w/ pino-pretty in dev
+- src/calculators/eta.js \u2014 Haversine + SOG, confidence enum
+- src/calculators/deadReckoning.js \u2014 5/10/15 min projections
+- src/calculators/anomaly.js \u2014 SHARP_TURN, SUDDEN_STOP, EMERGENCY_SQUAWK
+- src/normalizers/aisNormalizer.js \u2014 PositionReport + ShipStaticData + ClassB
+- src/normalizers/adsbNormalizer.js \u2014 OpenSky state vectors
+- src/connectors/aisstream.js \u2014 WebSocket + exponential backoff
+- src/connectors/opensky.js \u2014 OAuth2 + 30s polling
+- src/writers/firebaseWriter.js \u2014 RTDB + Firestore, 3x retry
+- src/writers/localQueue.js \u2014 JSONL fallback + drain loop
+- src/lod/priorityScorer.js \u2014 PRD \u00a76 formula
+- src/transport/wsServer.js \u2014 /vessels/stream WebSocket
+- src/transport/restSnapshot.js \u2014 /vessels/snapshot 10s cache
+- src/routes/api.js \u2014 POST /lod, GET /health, GET /tracks/:icao24
+- src/index.js \u2014 full bootstrap + ETA_CALCULATED logging
+
+## Verification Results
+- npm install: 229 packages, exit 0
+- node --check: ALL 14 files PASS
+- Self-verification: PASSED
+- Fixed cli-visualizer.js to properly identify airplane tracking using source==ADSB.
+
+## Status: COMPLETE
+---
+

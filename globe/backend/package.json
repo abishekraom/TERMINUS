@@ -1,0 +1,28 @@
+{
+  "name": "vdie",
+  "version": "1.0.0",
+  "description": "Vessel Data Ingestion Engine — AIS + ADS-B → Firebase + WS + REST",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "cross-env NODE_ENV=development node src/index.js",
+    "dev:win": "set NODE_ENV=development && node src/index.js",
+    "check": "node --check src/index.js && node --check src/logger.js && node --check src/connectors/aisstream.js && node --check src/connectors/opensky.js && node --check src/normalizers/aisNormalizer.js && node --check src/normalizers/adsbNormalizer.js && node --check src/calculators/eta.js && node --check src/calculators/deadReckoning.js && node --check src/calculators/anomaly.js && node --check src/writers/firebaseWriter.js && node --check src/writers/localQueue.js && node --check src/lod/priorityScorer.js && node --check src/transport/wsServer.js && node --check src/transport/restSnapshot.js && node --check src/routes/api.js",
+    "lint": "echo 'No linter configured — run npm run check for syntax validation'"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.5.0",
+    "@fastify/websocket": "^7.2.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^16.4.7",
+    "fastify": "^4.29.1",
+    "firebase-admin": "^10.3.0",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "undici": "^6.21.0",
+    "ws": "^8.18.0"
+  }
+}
