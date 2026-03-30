@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "vessels": {
+      "$vesselId": {
+        "state": {
+          ".read": "auth != null",
+          ".write": false,
+          ".validate": "newData.hasChildren(['vesselId', 'source', 'lastUpdatedUtc'])"
+        },
+        "trail": {
+          ".read": "auth != null",
+          ".write": false,
+          ".validate": "newData.isString() == false"
+        },
+        ".read": "auth != null",
+        ".write": false
+      },
+      ".read": "auth != null",
+      ".write": false
+    },
+
+    "metadata": {
+      ".read": "auth != null",
+      ".write": false
+    },
+
+    ".read": false,
+    ".write": false
+  }
+}
