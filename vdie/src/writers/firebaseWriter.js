@@ -314,24 +314,6 @@ async function readVesselTrail(vesselId) {
   return snapshot.val() || [];
 }
 
-module.exports = {
-  // Writers
-  writeVesselState,
-  appendTrailPoint,
-  batchAppendTrailPoints,
-  upsertVesselProfile,
-  writeVesselAlert,
-
-  // Readers
-  readVesselState,
-  readAllVesselStates,
-  readVesselTrail,
-
-  // Cleanup
-  removeVesselState,
-  removeVesselFull,
-};
-
 /**
  * Remove a vessel's live state from Realtime DB.
  * Used by the stale data reaper (Level 1).
@@ -379,3 +361,21 @@ async function removeVesselFull(vesselId) {
     vesselId,
   });
 }
+
+module.exports = {
+  // Writers
+  writeVesselState,
+  appendTrailPoint,
+  batchAppendTrailPoints,
+  upsertVesselProfile,
+  writeVesselAlert,
+
+  // Readers
+  readVesselState,
+  readAllVesselStates,
+  readVesselTrail,
+
+  // Cleanup
+  removeVesselState,
+  removeVesselFull,
+};

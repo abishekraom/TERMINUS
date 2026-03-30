@@ -23,3 +23,9 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+./agent
+./claude
+./gemini
+./gsd
+./oma
