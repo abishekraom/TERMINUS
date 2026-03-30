@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// TERMINUS / VDIE — Firestore Security Rules
+//
+// Design:
+//   - All WRITES are server-only (Firebase Admin SDK bypasses these rules).
+//   - Client reads require Firebase Authentication.
+//   - Default deny on all collections not explicitly listed.
+// ──────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Vessel Profiles ────────────────────────────────────────────────────
+    // Written by VDIE server (Admin SDK) on ShipStaticData messages.
+    // Clients can read if authenticated.
+    match /vesselProfiles/{vesselId} {
+      allow read:  if request.auth != null;
+      allow write: if false;  // Admin SDK bypasses — no client writes
+    }
+
+    // ── Vessel Alerts ──────────────────────────────────────────────────────
+    // Written by VDIE server (Admin SDK) on anomaly detection.
+    // Clients can read if authenticated.
+    match /vesselAlerts/{vesselId} {
+      allow read:  if request.auth != null;
+      allow write: if false;  // Admin SDK bypasses — no client writes
+    }
+
+    // ── Threat Intelligence (TIE) ──────────────────────────────────────────
+    // Written by TIE server. Clients can read if authenticated.
+    match /threats/{threatId} {
+      allow read:  if request.auth != null;
+      allow write: if false;
+    }
+
+    match /threatSources/{sourceId} {
+      allow read:  if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Default Deny ───────────────────────────────────────────────────────
+    // Any collection not explicitly listed above is fully locked down.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
