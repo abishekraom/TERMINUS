@@ -28,4 +28,4 @@ Thumbs.db
 ./claude
 ./gemini
 ./gsd
-./oma
+./oma__pycache__/
