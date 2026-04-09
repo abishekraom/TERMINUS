@@ -73,42 +73,35 @@ function createReaper(vesselStore, removeVesselState, removeVesselFull, options 
       }
 
       if (ageMs > staleFirebaseMs) {
-        // Vessel has been dark for 30+ min — remove entirely from Firebase (state + trail)
+        // Vessel has been dark for 30+ min — remove entirely from memory only
+        // FIREBASE DELETION DISABLED TO PRESERVE HISTORICAL DATA
+        // MEMORY EVICTION DISABLED TO PRESERVE HISTORICAL DATA FOR UI
+        /*
         logger.info({
-          event: 'STALE_VESSEL_FULL_REMOVE',
+          event: 'STALE_VESSEL_FULL_REMOVE_SKIPPED',
           vesselId,
           lastUpdated: vessel.lastUpdatedUtc,
           ageMinutes: Math.round(ageMs / 60_000),
         });
 
         vesselStore.delete(vesselId);
-
-        try {
-          await removeVesselFull(vesselId);
-          stats.fullRemoved++;
-        } catch (err) {
-          logger.error({ event: 'STALE_FULL_REMOVE_ERROR', vesselId, error: err.message });
-        }
-
+        stats.fullRemoved++;
+        */
       } else if (ageMs > staleMemoryMs) {
-        // Vessel is quiet but may return — evict from memory + remove state,
-        // but keep trail in Firebase so the globe doesn't lose the historical polyline
+        // Vessel is quiet but may return — evict from memory only
+        // FIREBASE DELETION DISABLED TO PRESERVE HISTORICAL DATA
+        // MEMORY EVICTION DISABLED TO PRESERVE HISTORICAL DATA FOR UI
+        /*
         logger.info({
-          event: 'STALE_VESSEL_STATE_REMOVE',
+          event: 'STALE_VESSEL_STATE_REMOVE_SKIPPED',
           vesselId,
           lastUpdated: vessel.lastUpdatedUtc,
           ageMinutes: Math.round(ageMs / 60_000),
         });
 
         vesselStore.delete(vesselId);
-
-        try {
-          await removeVesselState(vesselId);
-          stats.stateRemoved++;
-        } catch (err) {
-          logger.error({ event: 'STALE_STATE_REMOVE_ERROR', vesselId, error: err.message });
-        }
-
+        stats.stateRemoved++;
+        */
       } else {
         stats.remaining++;
       }

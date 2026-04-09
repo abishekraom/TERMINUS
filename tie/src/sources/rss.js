@@ -2,7 +2,11 @@ const Parser = require('rss-parser');
 const { processEvent } = require('../threatManager');
 const logger = require('../logger');
 
-const parser = new Parser();
+const parser = new Parser({
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+  }
+});
 
 const feeds = [
   'https://feeds.reuters.com/reuters/worldNews',

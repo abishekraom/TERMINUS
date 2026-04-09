@@ -14,7 +14,7 @@ if (!admin.apps.length) {
       });
       logger.info('Firebase initialized with standard credentials');
     } else {
-      admin.initializeApp();
+      admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
       logger.warn('Firebase initialized with default application credentials');
     }
   } catch (error) {

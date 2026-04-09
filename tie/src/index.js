@@ -1,5 +1,6 @@
 require('dotenv').config();
 const fastify = require('fastify')({ logger: false });
+const cors = require('@fastify/cors');
 const { startScheduler } = require('./scheduler');
 const config = require('./config');
 const logger = require('./logger');
@@ -78,6 +79,12 @@ fastify.get('/threats/:threatId', { preHandler: authenticate }, async (request, 
 // ─── Server Startup ───────────────────────────────────────────────────────────
 const start = async () => {
   try {
+    await fastify.register(cors, {
+      origin: 'http://localhost:5173', // Your Vite frontend
+      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+    });
+    
     await fastify.listen({ port: config.port, host: '0.0.0.0' });
     logger.info(`TIE Server listening on port ${config.port}`);
     startScheduler();

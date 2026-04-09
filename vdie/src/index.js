@@ -20,7 +20,7 @@ require('dotenv').config();
 const Fastify = require('fastify');
 const logger = require('./logger');
 
-const { writeVesselState, appendTrailPoint, upsertVesselProfile, writeVesselAlert, removeVesselState, removeVesselFull } = require('./writers/firebaseWriter');
+const { writeVesselState, appendTrailPoint, upsertVesselProfile, writeVesselAlert, removeVesselState, removeVesselFull, readAllVesselStates } = require('./writers/firebaseWriter');
 const { startDrainLoop, stopDrainLoop } = require('./writers/localQueue');
 const { normalizeAisMessage } = require('./normalizers/aisNormalizer');
 const { normalizeOpenSkyResponse } = require('./normalizers/adsbNormalizer');
@@ -204,6 +204,11 @@ async function startServer() {
     disableRequestLogging: true,
   });
 
+  // Register CORS
+  await fastify.register(require('@fastify/cors'), {
+    origin: '*', // Allow all origins for dev
+  });
+
   // Register @fastify/websocket
   await fastify.register(require('@fastify/websocket'));
 
@@ -237,6 +242,18 @@ async function main() {
   logger.info({ event: 'VDIE_STARTING', version: '1.0.0', nodeEnv: process.env.NODE_ENV });
 
   // 1. (Firebase is auto-initialized on import)
+  try {
+    logger.info({ event: 'FIREBASE_SEEDING', message: 'Loading existing vessels from Firebase Realtime DB...' });
+    const existingStates = await readAllVesselStates();
+    let loadedCount = 0;
+    for (const [vesselId, state] of Object.entries(existingStates)) {
+      vesselStore.set(vesselId, state);
+      loadedCount++;
+    }
+    logger.info({ event: 'FIREBASE_SEED_SUCCESS', loadedCount });
+  } catch (err) {
+    logger.error({ event: 'FIREBASE_SEED_ERROR', error: err.message });
+  }
 
   // 2. Start local queue drain loop
   startDrainLoop();
