@@ -147,7 +147,7 @@ async function processEvent({
         const result = await firecrawl.scrapeUrl(url, {
           formats: ['markdown'],
           onlyMainContent: true,
-          timeout: 10000,
+          timeout: 20000,
         });
         if (result && result.data && result.data.markdown) {
           finalContent = result.data.markdown;
@@ -162,7 +162,7 @@ async function processEvent({
       } catch (err) {
         // PRD §9: Firecrawl scrape timeout → use title+description as fallback
         logger.warn({ event: 'FIRECRAWL_SCRAPE_FAILED', url, err: err.message, scrapeSuccess: false });
-        finalContent = content; // fall back to original content
+        finalContent = `${title}\n\n${content}`; // fall back to metadata/title
       }
     }
 
@@ -263,7 +263,7 @@ async function processEvent({
     };
 
     // PRD §7.5 — Low confidence → draft queue, do NOT notify VDIE
-    if (c.confidence < 0.4) {
+    if (c.confidence < 0.2) {
       logger.warn({
         event: 'LOW_CONFIDENCE_THREAT_DRAFTED',
         threatId,

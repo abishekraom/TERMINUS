@@ -2,6 +2,7 @@ const { request } = require('undici');
 const { processEvent } = require('../threatManager');
 const logger = require('../logger');
 const crypto = require('crypto');
+const mockGdelt = require('./mockGdelt');
 
 function hash(str) {
   return crypto.createHash('md5').update(str).digest('hex');
@@ -15,7 +16,17 @@ async function fetchGdelt() {
   
   try {
     const res = await request(url);
-    const data = await res.body.json();
+    let data;
+    try {
+      data = await res.body.json();
+    } catch (parseErr) {
+      if (parseErr.name === 'SyntaxError') {
+        logger.warn({ source: 'GDELT' }, 'SyntaxError from GDELT fetch, falling back to mock data');
+        data = { articles: mockGdelt };
+      } else {
+        throw parseErr;
+      }
+    }
     const articles = data.articles || [];
 
     logger.debug({
