@@ -1,6 +1,7 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useTelemetryStore } from '../store/useTelemetryStore';
 
 const dummy = new THREE.Object3D();
 const _color = new THREE.Color();
@@ -12,7 +13,7 @@ const _color = new THREE.Color();
  * Uses InstancedMesh for single-draw-call performance.
  * Smoothly interpolates (lerp) between position updates.
  */
-export default function ShipMarker({ data, selectedId, getCoordinatesFromLatLng, onMarkerClick }) {
+export default function ShipMarker({ selectedId, getCoordinatesFromLatLng, onMarkerClick }) {
   const meshRef = useRef();
   const [hovered, setHovered] = useState(null);
 
@@ -21,44 +22,18 @@ export default function ShipMarker({ data, selectedId, getCoordinatesFromLatLng,
   const currentPositions = useRef(new Map());
 
   // Memoized geometry — never recreated
-  const geometry = useMemo(() => new THREE.SphereGeometry(0.012, 12, 12), []);
-
-  // Update target positions when data changes
-  useEffect(() => {
-    console.log('[ShipMarker] useEffect triggered, data length:', data.length);
-    for (const marker of data) {
-      const pos = getCoordinatesFromLatLng(marker.lat, marker.lon, 1.0);
-
-      if (!targetPositions.current.has(marker.id)) {
-        // First appearance → teleport immediately
-        targetPositions.current.set(marker.id, pos.clone());
-        currentPositions.current.set(marker.id, pos.clone());
-      } else {
-        targetPositions.current.set(marker.id, pos.clone());
-      }
-    }
-
-    // Clean up removed markers
-    const currentIds = new Set(data.map(m => m.id));
-    for (const id of targetPositions.current.keys()) {
-      if (!currentIds.has(id)) {
-        targetPositions.current.delete(id);
-        currentPositions.current.delete(id);
-      }
-    }
-  }, [data, getCoordinatesFromLatLng]);
+  const geometry = useMemo(() => new THREE.SphereGeometry(0.003, 12, 12), []);
 
   // Per-frame: smooth interpolation + pulse animation + real-time movement
   useFrame((state, delta) => {
-    if (!meshRef.current || data.length === 0) {
-      // Only log occasionally to avoid spam
-      if (Math.random() < 0.001) console.log('[ShipMarker] useFrame early return, meshRef:', !!meshRef.current, 'data length:', data.length);
+    const vessels = useTelemetryStore.getState().vessels;
+    if (!meshRef.current || vessels.length === 0) {
+      if (meshRef.current) meshRef.current.count = 0;
       return;
     }
 
     const time = state.clock.getElapsedTime();
     const cameraDistance = state.camera.position.length();
-    const safeDelta = Math.min(Math.max(delta, 0.001), 0.1);
 
     // LOD scaling — smaller when far, larger when close
     const lodScale = THREE.MathUtils.lerp(
@@ -66,21 +41,25 @@ export default function ShipMarker({ data, selectedId, getCoordinatesFromLatLng,
       THREE.MathUtils.clamp((cameraDistance - 1.5) / 3.0, 0, 1)
     );
 
-    for (let i = 0; i < data.length; i++) {
-      const marker = data[i];
-      const target = targetPositions.current.get(marker.id);
+    for (let i = 0; i < vessels.length; i++) {
+      const marker = vessels[i];
+      const pos = getCoordinatesFromLatLng(marker.lat, marker.lon, 1.0);
+      
+      let target = targetPositions.current.get(marker.id);
       let current = currentPositions.current.get(marker.id);
 
-      if (!target) continue;
-
-      if (!current) {
-        current = target.clone();
+      if (!target) {
+        target = pos.clone();
+        current = pos.clone();
+        targetPositions.current.set(marker.id, target);
         currentPositions.current.set(marker.id, current);
+      } else {
+        target.copy(pos);
       }
 
       // Ref-Based Interpolation: Smooth interpolation toward target over the 5-second data window
-      // Alpha of 0.05 ensures it slides smoothly toward the new coordinate every frame without snapping
-      current.lerp(target, 0.05);
+      // Alpha of 0.005 ensures it slides smoothly toward the new coordinate every frame without snapping
+      current.lerp(target, 0.005);
 
       // Calculate simulated movement based on heading and speed
       // Convert heading (degrees) to radians, with offset for globe coordinate system
@@ -125,18 +104,16 @@ export default function ShipMarker({ data, selectedId, getCoordinatesFromLatLng,
 
     meshRef.current.instanceMatrix.needsUpdate = true;
     if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
-    meshRef.current.count = data.length;
+    meshRef.current.count = vessels.length;
   });
 
   // Click handler via instanceId
   const handleClick = (e) => {
-    console.log('[ShipMarker] pointer down event', e);
     e.stopPropagation();
     const instanceId = e.instanceId;
-    console.log('[ShipMarker] instanceId:', instanceId, 'data length:', data.length);
-    if (instanceId != null && instanceId < data.length) {
-      const clicked = data[instanceId];
-      console.log('[ShipMarker] clicking vessel:', clicked.id, clicked.name);
+    const vessels = useTelemetryStore.getState().vessels;
+    if (instanceId != null && instanceId < vessels.length) {
+      const clicked = vessels[instanceId];
       onMarkerClick(clicked);
     }
   };
@@ -145,10 +122,9 @@ export default function ShipMarker({ data, selectedId, getCoordinatesFromLatLng,
   const handlePointerOver = (e) => {
     e.stopPropagation();
     const instanceId = e.instanceId;
-    console.log('[ShipMarker] pointer over instanceId:', instanceId, 'data length:', data.length);
-    if (instanceId != null && instanceId < data.length) {
-      const hoveredVessel = data[instanceId];
-      console.log('[ShipMarker] hovering vessel:', hoveredVessel.id, hoveredVessel.name);
+    const vessels = useTelemetryStore.getState().vessels;
+    if (instanceId != null && instanceId < vessels.length) {
+      const hoveredVessel = vessels[instanceId];
       setHovered(hoveredVessel.id);
       document.body.style.cursor = 'pointer';
     }
@@ -159,12 +135,10 @@ export default function ShipMarker({ data, selectedId, getCoordinatesFromLatLng,
     document.body.style.cursor = 'auto';
   };
 
-  if (data.length === 0) return null;
-
   return (
     <instancedMesh
       ref={meshRef}
-      args={[geometry, undefined, 40000]}
+      args={[geometry, undefined, 150000]}
       onPointerDown={handleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}

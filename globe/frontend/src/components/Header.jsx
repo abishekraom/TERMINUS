@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
+import { useTelemetryStore } from '../store/useTelemetryStore';
 
-export default function Header() {
+export default function Header({ activeMode = 'normal' }) {
+  const status = useTelemetryStore((s) => s.status);
+
   return (
     <motion.header
       initial={{ opacity: 0 }}
@@ -35,7 +38,7 @@ export default function Header() {
             </svg>
             <div>
               <h1 className="text-3xl font-sans tracking-[0.15em] text-text-main font-bold drop-shadow-md leading-none">
-                WORLDVIEW
+                TERMINUS
               </h1>
               <p className="text-[10px] tracking-[0.15em] text-text-muted mt-1 uppercase font-medium">
                 Global Logistics & Tactical Tracking
@@ -47,10 +50,19 @@ export default function Header() {
 
       {/* Right side pieces */}
       <div className="flex flex-col items-end gap-4 pointer-events-auto">
-        {/* Active Style */}
-        <div className="flex items-center gap-2 text-[10px]">
-          <span className="text-text-muted tracking-wider">ACTIVE STYLE</span>
-          <span className="text-amber font-bold tracking-wider text-glow-amber">CRT</span>
+        <div className="flex flex-col items-end gap-2">
+          {status === 'CONNECTING' && (
+            <div className="flex items-center gap-2 text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulse"></span>
+              <span className="text-amber font-bold tracking-wider text-glow-amber">CONNECTING...</span>
+            </div>
+          )}
+
+          {/* Active Style */}
+          <div className="flex items-center gap-2 text-[10px]">
+            <span className="text-text-muted tracking-wider">ACTIVE STYLE</span>
+            <span className="text-amber font-bold tracking-wider text-glow-amber">{activeMode.toUpperCase()}</span>
+          </div>
         </div>
         
         {/* Search */}

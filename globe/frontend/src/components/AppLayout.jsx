@@ -8,7 +8,7 @@ import { useState } from 'react';
 
 export default function AppLayout() {
   const [zoomTarget, setZoomTarget] = useState(null);
-  const [activeMode, setActiveMode] = useState('crt');
+  const [activeMode, setActiveMode] = useState('normal');
   const [assetCount, setAssetCount] = useState(0);
   const [layerStates, setLayerStates] = useState({ vessels: true, aircraft: true, threats: true });
   const [density, setDensity] = useState(50); // 0-100, controls how many vessels to show
@@ -16,10 +16,10 @@ export default function AppLayout() {
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-black relative">
       {/* Header */}
-      <Header />
+      <Header activeMode={activeMode} />
 
       {/* Main Content Area */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className={`flex-1 relative overflow-hidden ${activeMode !== 'normal' && activeMode !== 'ai' ? 'filter-' + activeMode : ''}`}>
         {/* Globe / Center (fullscreen behind panels) */}
         <div className="absolute inset-0">
           <GlobeCanvas 
@@ -31,7 +31,7 @@ export default function AppLayout() {
         </div>
 
         {/* Scanlines Overlay */}
-        <div className="scanlines-overlay" />
+        {(activeMode === 'crt' || activeMode === 'nvg') && <div className="scanlines-overlay" />}
 
         {/* Info Overlays */}
         <InfoOverlays />

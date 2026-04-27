@@ -4,10 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const FILTER_MODES = [
   { id: 'crt', label: 'CRT', icon: '▦' },
   { id: 'nvg', label: 'NVG', icon: '☽' },
-  { id: 'flir', label: 'FLIR', icon: '◐' },
-  { id: 'anime', label: 'Anime', icon: '✦' },
   { id: 'noir', label: 'Noir', icon: '◑' },
-  { id: 'snow', label: 'Snow', icon: '❄' },
 ];
 
 export default function ViewModeSelector({ activeMode, setActiveMode }) {

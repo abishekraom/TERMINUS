@@ -174,3 +174,8 @@ body::before {
   border: none;
   box-shadow: 0 0 6px rgba(77, 200, 255, 0.4);
 }
+
+/* ─── CSS Filters ───────────────────────────────────────── */
+.filter-crt { filter: sepia(0.6) hue-rotate(-30deg) saturate(1.5) contrast(1.2); }
+.filter-nvg { filter: sepia(1) hue-rotate(50deg) saturate(3) brightness(1.2) contrast(1.5); }
+.filter-noir { filter: grayscale(1) contrast(1.5) brightness(0.9); }

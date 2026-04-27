@@ -1,6 +1,7 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useTelemetryStore } from '../store/useTelemetryStore';
 
 const dummy = new THREE.Object3D();
 const _color = new THREE.Color();
@@ -15,7 +16,7 @@ const _axis = new THREE.Vector3();
  * based on heading. Uses InstancedMesh for performance.
  * Smoothly interpolates positions between Firestore updates.
  */
-export default function AircraftMarker({ data, selectedId, getCoordinatesFromLatLng, onMarkerClick }) {
+export default function AircraftMarker({ selectedId, getCoordinatesFromLatLng, onMarkerClick }) {
   const meshRef = useRef();
   const [hovered, setHovered] = useState(null);
 
@@ -25,63 +26,47 @@ export default function AircraftMarker({ data, selectedId, getCoordinatesFromLat
 
   // ConeGeometry: 4 sides = pyramid/arrow shape, rotated to point "forward"
   const geometry = useMemo(() => {
-    const geo = new THREE.ConeGeometry(0.008, 0.022, 4);
+    const geo = new THREE.ConeGeometry(0.002, 0.0055, 4);
     // Rotate so the tip points along +Y by default (will be reoriented per-instance)
     geo.rotateX(Math.PI / 2);
     return geo;
   }, []);
 
-  // Update target positions when data changes
-  useEffect(() => {
-    for (const marker of data) {
-      const pos = getCoordinatesFromLatLng(marker.lat, marker.lon, 1.003);
-
-      if (!targetPositions.current.has(marker.id)) {
-        targetPositions.current.set(marker.id, pos.clone());
-        currentPositions.current.set(marker.id, pos.clone());
-      } else {
-        targetPositions.current.set(marker.id, pos.clone());
-      }
-    }
-
-    // Clean up removed markers
-    const currentIds = new Set(data.map(m => m.id));
-    for (const id of targetPositions.current.keys()) {
-      if (!currentIds.has(id)) {
-        targetPositions.current.delete(id);
-        currentPositions.current.delete(id);
-      }
-    }
-  }, [data, getCoordinatesFromLatLng]);
-
   // Per-frame animation: lerp, heading rotation, pulse, colors
   useFrame((state, delta) => {
-    if (!meshRef.current || data.length === 0) return;
+    const aircraft = useTelemetryStore.getState().aircraft;
+    if (!meshRef.current || aircraft.length === 0) {
+      if (meshRef.current) meshRef.current.count = 0;
+      return;
+    }
 
     const time = state.clock.getElapsedTime();
     const cameraDistance = state.camera.position.length();
-    const safeDelta = Math.min(Math.max(delta, 0.001), 0.1);
 
     const lodScale = THREE.MathUtils.lerp(
       1.2, 0.45,
       THREE.MathUtils.clamp((cameraDistance - 1.5) / 3.0, 0, 1)
     );
 
-    for (let i = 0; i < data.length; i++) {
-      const marker = data[i];
-      const target = targetPositions.current.get(marker.id);
+    for (let i = 0; i < aircraft.length; i++) {
+      const marker = aircraft[i];
+      const pos = getCoordinatesFromLatLng(marker.lat, marker.lon, 1.003);
+
+      let target = targetPositions.current.get(marker.id);
       let current = currentPositions.current.get(marker.id);
 
-      if (!target) continue;
-
-      if (!current) {
-        current = target.clone();
+      if (!target) {
+        target = pos.clone();
+        current = pos.clone();
+        targetPositions.current.set(marker.id, target);
         currentPositions.current.set(marker.id, current);
+      } else {
+        target.copy(pos);
       }
 
       // Ref-Based Interpolation: Smooth interpolation over the 5-second window
-      // Alpha of 0.05 ensures smooth gliding across the globe every frame
-      current.lerp(target, 0.05);
+      // Alpha of 0.005 ensures smooth gliding across the globe every frame
+      current.lerp(target, 0.005);
 
       // Scale with pulse
       const isSelected = selectedId === marker.id;
@@ -127,23 +112,25 @@ export default function AircraftMarker({ data, selectedId, getCoordinatesFromLat
 
     meshRef.current.instanceMatrix.needsUpdate = true;
     if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
-    meshRef.current.count = data.length;
+    meshRef.current.count = aircraft.length;
   });
 
   // Click handler
   const handleClick = (e) => {
     e.stopPropagation();
     const instanceId = e.instanceId;
-    if (instanceId != null && instanceId < data.length) {
-      onMarkerClick(data[instanceId]);
+    const aircraft = useTelemetryStore.getState().aircraft;
+    if (instanceId != null && instanceId < aircraft.length) {
+      onMarkerClick(aircraft[instanceId]);
     }
   };
 
   const handlePointerOver = (e) => {
     e.stopPropagation();
     const instanceId = e.instanceId;
-    if (instanceId != null && instanceId < data.length) {
-      const hoveredAircraft = data[instanceId];
+    const aircraft = useTelemetryStore.getState().aircraft;
+    if (instanceId != null && instanceId < aircraft.length) {
+      const hoveredAircraft = aircraft[instanceId];
       setHovered(hoveredAircraft.id);
       document.body.style.cursor = 'pointer';
     }
@@ -154,12 +141,10 @@ export default function AircraftMarker({ data, selectedId, getCoordinatesFromLat
     document.body.style.cursor = 'auto';
   };
 
-  if (data.length === 0) return null;
-
   return (
     <instancedMesh
       ref={meshRef}
-      args={[geometry, undefined, 40000]}
+      args={[geometry, undefined, 150000]}
       onPointerDown={handleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
