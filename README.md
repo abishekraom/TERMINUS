@@ -63,15 +63,13 @@ Before setting up TERMINUS, ensure you have the following software installed:
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
    cp .env.example .env
-   # Update .env with your Firebase credentials
    ```
 
 3. Setup the Vessel Data Ingestion Engine (VDIE):
    ```bash
    cd ../vdie
    npm install
-   cp .env.example .env
-   # Update .env with Firebase and Port configurations
+   # Create a .env file based on the Environment Variables section below
    ```
 
 4. Setup the Threat Intelligence Engine (TIE):
@@ -79,36 +77,104 @@ Before setting up TERMINUS, ensure you have the following software installed:
    cd ../tie
    npm install
    cp .env.example .env
-   # Update .env with Gemini and Firecrawl API keys
    ```
 
 5. Setup the Globe (Frontend):
    ```bash
    cd ../globe/frontend
    npm install
-   # Create a .env file with your Firebase web configuration
+   cp .env.example .env
    ```
 
-### Configuration Details
+## Environment Variables
 
-#### Firebase Setup
-- Enable Realtime Database for live telemetry (used by VDIE and Globe).
-- Enable Firestore for threat zones and persistent profiles (used by TIE and PFE).
-- Download your service account JSON file and place it in the `secrets/` directory of the respective microservices (`vdie`, `tie`, `pfe`).
+Each sub-system requires specific environment variables to be defined in a `.env` file within its respective directory.
 
-#### API Keys
-- Gemini API: Obtain from Google AI Studio.
-- Firecrawl API: Obtain from firecrawl.dev.
-- AISStream API: Required for maritime ingestion in VDIE.
+### TIE (Threat Intelligence Engine)
+```env
+PORT=3002
+LOG_LEVEL=debug
+NODE_ENV=development
 
-### Running the System
+# External Integrations
+GEMINI_API_KEY=your_gemini_api_key
+FIRECRAWL_API_KEY=your_firecrawl_api_key
 
-To run the full system, you will need to start each component in a separate terminal:
+# Optional Data Sources
+NEWSAPI_KEY=your_newsapi_key
+ACLED_API_KEY=your_acled_key
+ACLED_EMAIL=your_acled_email
+OWM_API_KEY=your_open_weather_map_key
 
-1. **PFE**: `uvicorn src.main:app --reload`
-2. **VDIE**: `npm start`
-3. **TIE**: `npm start`
-4. **Globe**: `npm run dev`
+# Firebase Admin
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=admin@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+### PFE (Path Finding Engine)
+```env
+PORT=3003
+ENV=development
+LOG_LEVEL=DEBUG
+
+# Firebase Configuration
+FIREBASE_SERVICE_ACCOUNT_PATH=./secrets/firebase-service-account.json
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_REALTIME_DB_URL=https://your-project-default-rtdb.firebaseio.com
+
+# Collection Names
+FIRESTORE_THREATS_COLLECTION=threats
+FIRESTORE_VESSEL_ROUTES_COLLECTION=vesselRoutes
+FIRESTORE_VESSEL_PROFILES_COLLECTION=vesselProfiles
+
+# Pathfinding Logic
+MARITIME_GRAPH_PATH=./data/maritime_graph.geojson
+ASTAR_MAX_NODES=10000
+SNAP_WARN_DISTANCE_NM=500
+ETA_ROUTING_FACTOR=1.08
+AIR_SAMPLE_INTERVAL_NM=200
+```
+
+### VDIE (Vessel Data Ingestion Engine)
+```env
+PORT=3001
+NODE_ENV=development
+LOG_LEVEL=debug
+
+# Live Feeds
+AISSTREAM_API_KEY=your_aisstream_api_key
+OPENSKY_CLIENT_ID=your_opensky_client_id
+OPENSKY_CLIENT_SECRET=your_opensky_client_secret
+
+# Firebase Configuration
+FIREBASE_SERVICE_ACCOUNT_PATH=./secrets/firebase-service-account.json
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_REALTIME_DB_URL=https://your-project-default-rtdb.firebaseio.com
+
+# Level of Detail
+LOD_DEFAULT=200
+LOD_MAX=5000
+```
+
+### Globe (Frontend)
+```env
+VITE_FIREBASE_API_KEY=your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+VITE_FIREBASE_APP_ID=your-app-id
+```
+
+## Running the System
+
+To run the full system, start each component in a separate terminal:
+
+1. **PFE**: `uvicorn src.main:app --reload` (from `/pfe`)
+2. **VDIE**: `npm start` (from `/vdie`)
+3. **TIE**: `npm start` (from `/tie`)
+4. **Globe**: `npm run dev` (from `/globe/frontend`)
 
 ## Project Structure
 
